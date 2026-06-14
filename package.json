@@ -1,0 +1,16 @@
+{
+  "name": "launchops",
+  "private": true,
+  "scripts": {
+    "dev:web": "npm --prefix apps/web run dev",
+    "lint:web": "npm --prefix apps/web run lint",
+    "typecheck:web": "npm --prefix apps/web run typecheck",
+    "dev:api": "mvn -f apps/api/pom.xml spring-boot:run",
+    "test:api": "mvn -f apps/api/pom.xml test",
+    "build:api": "mvn -f apps/api/pom.xml package"
+  },
+  "workspaces": [
+    "apps/web",
+    "packages/contracts"
+  ]
+}
