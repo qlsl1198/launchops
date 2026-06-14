@@ -1,0 +1,14 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build and upload LaunchOps to TestFlight"
+  lane :beta do
+    increment_build_number(xcodeproj: "LaunchOps.xcodeproj")
+    build_app(
+      scheme: "LaunchOps",
+      export_method: "app-store"
+    )
+    upload_to_testflight(skip_waiting_for_build_processing: true)
+  end
+end
+
