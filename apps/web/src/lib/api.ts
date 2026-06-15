@@ -142,29 +142,29 @@ const USER_KEY = "launchops.user";
 
 const demoDashboard: DashboardSummary = {
   metrics: [
-    { label: "Events 24h", value: "18,420", delta: "+12.4% vs yesterday", tone: "good" },
-    { label: "Error rate", value: "1.8%", delta: "below alert threshold", tone: "good" },
-    { label: "Avg latency", value: "246ms", delta: "p95 stable", tone: "neutral" },
-    { label: "Open incidents", value: "2", delta: "1 needs owner", tone: "warning" }
+    { label: "24시간 이벤트", value: "18,420", delta: "어제보다 +12.4%", tone: "good" },
+    { label: "오류율", value: "1.8%", delta: "알림 기준 이하", tone: "good" },
+    { label: "평균 지연", value: "246ms", delta: "p95 안정적", tone: "neutral" },
+    { label: "열린 장애", value: "2", delta: "1건 담당자 필요", tone: "warning" }
   ],
   recentEvents: [
-    { name: "checkout.completed", account_id: "acme", severity: "info", source: "server", occurred_at: "now" },
-    { name: "billing.webhook_failed", account_id: "orbit", severity: "error", source: "stripe", occurred_at: "3m ago" },
-    { name: "search.timeout", account_id: "northstar", severity: "warning", source: "api", occurred_at: "9m ago" }
+    { name: "결제 완료", account_id: "acme", severity: "info", source: "server", occurred_at: "방금 전" },
+    { name: "결제 웹훅 실패", account_id: "orbit", severity: "error", source: "stripe", occurred_at: "3분 전" },
+    { name: "검색 시간 초과", account_id: "northstar", severity: "warning", source: "api", occurred_at: "9분 전" }
   ],
   accountRisks: [
-    { account_id: "orbit", risk_score: 78, errors: 14, summary: "Webhook failures affecting invoices." },
-    { account_id: "northstar", risk_score: 61, errors: 6, summary: "Search latency increased after deploy." },
-    { account_id: "acme", risk_score: 22, errors: 1, summary: "Healthy usage with minor warnings." }
+    { account_id: "orbit", risk_score: 78, errors: 14, summary: "웹훅 실패로 청구서 전달이 지연되고 있습니다." },
+    { account_id: "northstar", risk_score: 61, errors: 6, summary: "배포 이후 검색 지연 시간이 증가했습니다." },
+    { account_id: "acme", risk_score: 22, errors: 1, summary: "사용량은 정상이며 경고가 소량 발생했습니다." }
   ],
   incidents: [
-    { id: "inc_1", title: "Billing webhooks retry storm", status: "investigating", severity: "sev2", owner: "backend", impact: "Invoices delayed." },
-    { id: "inc_2", title: "Search p95 latency elevated", status: "monitoring", severity: "sev3", owner: "platform", impact: "Search is slower." }
+    { id: "inc_1", title: "결제 웹훅 재시도 급증", status: "investigating", severity: "sev2", owner: "백엔드", impact: "일부 청구서 발송이 지연됩니다." },
+    { id: "inc_2", title: "검색 p95 지연 증가", status: "monitoring", severity: "sev3", owner: "플랫폼", impact: "검색 응답이 평소보다 느립니다." }
   ],
   tasks: [
-    { id: "task_1", title: "Add idempotency key to billing worker", status: "todo", priority: "high", assignee: "you" },
-    { id: "task_2", title: "Publish customer-facing status update", status: "doing", priority: "medium", assignee: "ops" },
-    { id: "task_3", title: "Backfill account health rollups", status: "done", priority: "low", assignee: "worker" }
+    { id: "task_1", title: "결제 워커에 멱등성 키 추가", status: "todo", priority: "high", assignee: "나" },
+    { id: "task_2", title: "고객 공지용 상태 업데이트 발행", status: "doing", priority: "medium", assignee: "운영" },
+    { id: "task_3", title: "고객 상태 집계 데이터 보정", status: "done", priority: "low", assignee: "워커" }
   ]
 };
 
@@ -173,7 +173,7 @@ const demoProjects: Project[] = [
     id: "demo",
     name: "LaunchOps Demo",
     projectKey: "demo",
-    environment: "production",
+    environment: "운영",
     createdAt: new Date().toISOString()
   }
 ];
@@ -186,7 +186,7 @@ const demoAccountHealth: AccountHealth[] = [
     errorCount24h: 14,
     p95DurationMs: 1330,
     riskScore: 78,
-    summary: "Webhook failures are affecting invoice delivery.",
+    summary: "웹훅 실패로 청구서 전달이 지연되고 있습니다.",
     updatedAt: new Date().toISOString()
   },
   {
@@ -196,7 +196,7 @@ const demoAccountHealth: AccountHealth[] = [
     errorCount24h: 6,
     p95DurationMs: 920,
     riskScore: 61,
-    summary: "Search latency increased after the latest deploy.",
+    summary: "최근 배포 이후 검색 지연 시간이 증가했습니다.",
     updatedAt: new Date().toISOString()
   }
 ];

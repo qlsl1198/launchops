@@ -47,6 +47,167 @@ main {
   padding: 24px;
 }
 
+.userAppShell {
+  display: block;
+  min-height: 100vh;
+  padding: 28px;
+  background: #f4f7fb;
+}
+
+.userTopbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.userTopbar button,
+.modeButton {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius);
+  min-height: 40px;
+  padding: 0 14px;
+  background: var(--surface-strong);
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modeButton {
+  margin: 0 0 10px;
+  background: #ffffff;
+  color: var(--blue);
+  border: 1px solid var(--line);
+}
+
+.userHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 24px;
+  align-items: stretch;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: #111827;
+  color: #ffffff;
+  padding: 28px;
+}
+
+.userHero p {
+  margin: 0 0 10px;
+  color: #93c5fd;
+  font-weight: 800;
+}
+
+.userHero h1 {
+  max-width: 780px;
+  margin: 0;
+  font-size: 40px;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.userHero span {
+  display: block;
+  max-width: 620px;
+  margin-top: 14px;
+  color: #cbd5e1;
+}
+
+.phoneMock {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #334155;
+  border-radius: 18px;
+  background: #0f172a;
+  padding: 18px;
+}
+
+.phoneHeader,
+.phoneMetric {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.phoneMetric {
+  border-radius: var(--radius);
+  background: #1e293b;
+  padding: 14px;
+}
+
+.phoneMetric span {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.phoneMetric strong {
+  text-align: right;
+}
+
+.userQuickGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.userContentGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.userPanel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 18px;
+}
+
+.userPanelWide {
+  grid-column: 1 / -1;
+}
+
+.userPanelHeader {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.userPanelHeader h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.feedItem,
+.impactSummary {
+  display: grid;
+  gap: 6px;
+  border-radius: var(--radius);
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.feedItem span,
+.impactSummary span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.feedItem p,
+.impactSummary p {
+  margin: 0;
+  color: #344054;
+}
+
 .authPanel {
   width: min(100%, 460px);
   border: 1px solid var(--line);
@@ -371,6 +532,13 @@ td {
   font-size: 14px;
 }
 
+td.wrapCell {
+  min-width: 260px;
+  max-width: 520px;
+  white-space: normal;
+  line-height: 1.45;
+}
+
 th {
   color: var(--muted);
   font-size: 12px;
@@ -552,10 +720,13 @@ meter {
   }
 
   .metricsGrid,
+  .userQuickGrid,
   .workspaceBanner,
   .split,
   .screenGrid,
-  .accountGrid {
+  .accountGrid,
+  .userHero,
+  .userContentGrid {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -580,11 +751,22 @@ meter {
 
   nav,
   .metricsGrid,
+  .userQuickGrid,
   .workspaceBanner,
   .split,
   .screenGrid,
   .formRow,
-  .accountGrid {
+  .accountGrid,
+  .userHero,
+  .userContentGrid {
     grid-template-columns: 1fr;
+  }
+
+  .userAppShell {
+    padding: 18px;
+  }
+
+  .userHero h1 {
+    font-size: 30px;
   }
 }
