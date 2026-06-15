@@ -40,6 +40,52 @@ main {
   min-height: 100vh;
 }
 
+.authShell {
+  display: grid;
+  grid-template-columns: 1fr;
+  place-items: center;
+  padding: 24px;
+}
+
+.authPanel {
+  width: min(100%, 460px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 28px;
+}
+
+.authBrand {
+  margin-bottom: 24px;
+}
+
+.authPanel h1 {
+  margin: 0 0 18px;
+  font-size: 28px;
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+
+.authForm {
+  border: 0;
+  padding: 0;
+}
+
+.formError {
+  margin: 0;
+  color: var(--red);
+  font-size: 13px;
+}
+
+.linkButton {
+  margin-top: 16px;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .loading,
 .loadingPanel {
   display: grid;
@@ -542,4 +588,3 @@ meter {
     grid-template-columns: 1fr;
   }
 }
-
