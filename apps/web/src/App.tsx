@@ -8,7 +8,8 @@ import {
   Plus,
   Radio,
   RefreshCw,
-  ShieldCheck
+  ShieldCheck,
+  Users
 } from "lucide-react";
 
 import { DataTable } from "./components/DataTable";
@@ -19,6 +20,7 @@ import {
   changeTaskStatus,
   createEvent,
   createIncident,
+  createProject,
   createTask,
   DashboardSummary,
   EventInput,
@@ -29,6 +31,7 @@ import {
   getDashboard,
   getEvents,
   getIncidents,
+  getMe,
   getProjects,
   getStoredUser,
   getTasks,
@@ -37,11 +40,12 @@ import {
   logout,
   OpsTask,
   Project,
+  ProjectMembership,
   register,
   UserProfile
 } from "./lib/api";
 
-type View = "overview" | "events" | "incidents" | "tasks" | "accounts" | "reliability";
+type View = "overview" | "events" | "incidents" | "tasks" | "accounts" | "workspace" | "reliability";
 
 const navItems: Array<{ id: View; label: string; icon: typeof Activity }> = [
   { id: "overview", label: "Overview", icon: Activity },
@@ -49,6 +53,7 @@ const navItems: Array<{ id: View; label: string; icon: typeof Activity }> = [
   { id: "incidents", label: "Incidents", icon: Bell },
   { id: "tasks", label: "Automations", icon: GitBranch },
   { id: "accounts", label: "Accounts", icon: Database },
+  { id: "workspace", label: "Workspace", icon: Users },
   { id: "reliability", label: "Reliability", icon: ShieldCheck }
 ];
 
@@ -67,6 +72,7 @@ export function App() {
   const [view, setView] = useState<View>("overview");
   const [projectKey, setProjectKey] = useState("demo");
   const [projects, setProjects] = useState<Project[]>([]);
+  const [memberships, setMemberships] = useState<ProjectMembership[]>([]);
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null);
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -79,7 +85,8 @@ export function App() {
 
   async function refresh() {
     setIsLoading(true);
-    const [nextProjects, nextDashboard, nextEvents, nextIncidents, nextTasks, nextAccounts] = await Promise.all([
+    const [me, fallbackProjects, nextDashboard, nextEvents, nextIncidents, nextTasks, nextAccounts] = await Promise.all([
+      getMe(),
       getProjects(),
       getDashboard(projectKey),
       getEvents(projectKey),
@@ -87,7 +94,10 @@ export function App() {
       getTasks(projectKey),
       getAccountHealth(projectKey)
     ]);
-    setProjects(nextProjects);
+    const memberProjects = me?.memberships.map((membership) => membership.project) ?? [];
+    setUser(me?.user ?? user);
+    setMemberships(me?.memberships ?? []);
+    setProjects(memberProjects.length ? memberProjects : fallbackProjects);
     setDashboard(nextDashboard);
     setEvents(nextEvents);
     setIncidents(nextIncidents);
@@ -221,6 +231,16 @@ export function App() {
           />
         ) : null}
         {view === "accounts" ? <AccountsView accounts={accountHealth} /> : null}
+        {view === "workspace" ? (
+          <WorkspaceView
+            memberships={memberships}
+            projects={projects}
+            onChanged={() => {
+              setNotice("Workspace projects updated.");
+              void refresh();
+            }}
+          />
+        ) : null}
         {view === "reliability" ? <ReliabilityView dashboard={dashboard} incidents={incidents} /> : null}
       </section>
     </main>
@@ -286,6 +306,8 @@ function titleFor(view: View) {
       return "Turn operational signals into accountable work.";
     case "accounts":
       return "Prioritize risky customers before they churn.";
+    case "workspace":
+      return "Manage projects and membership boundaries.";
     case "reliability":
       return "Track the reliability posture of the product.";
     default:
@@ -533,6 +555,68 @@ function AccountsView({ accounts }: { accounts: AccountHealth[] }) {
           </article>
         ))}
       </div>
+    </section>
+  );
+}
+
+function WorkspaceView({
+  memberships,
+  projects,
+  onChanged
+}: {
+  memberships: ProjectMembership[];
+  projects: Project[];
+  onChanged: () => void;
+}) {
+  const [form, setForm] = useState({ name: "", projectKey: "", environment: "production" });
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    await createProject(form);
+    setForm({ name: "", projectKey: "", environment: "production" });
+    onChanged();
+  }
+
+  const visibleMemberships = memberships.length
+    ? memberships
+    : projects.map((project) => ({ project, role: "demo" }));
+
+  return (
+    <section className="screenGrid">
+      <form className="formPanel" onSubmit={(event) => void submit(event)}>
+        <PanelTitle icon={Users} title="Create project" />
+        <Field label="Name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} />
+        <Field
+          label="Project key"
+          value={form.projectKey}
+          onChange={(value) => setForm({ ...form, projectKey: value.toLowerCase().replaceAll(" ", "-") })}
+        />
+        <Field
+          label="Environment"
+          value={form.environment}
+          onChange={(value) => setForm({ ...form, environment: value })}
+        />
+        <button type="submit">
+          <Plus size={16} /> Create project
+        </button>
+      </form>
+
+      <section className="panel">
+        <div className="panelHeader">
+          <h2>Memberships</h2>
+        </div>
+        <div className="cardList">
+          {visibleMemberships.map((membership) => (
+            <article className="workItem" key={membership.project.id}>
+              <div>
+                <strong>{membership.project.name}</strong>
+                <span>{membership.project.projectKey} · {membership.project.environment}</span>
+              </div>
+              <p>Role: {membership.role}</p>
+            </article>
+          ))}
+        </div>
+      </section>
     </section>
   );
 }

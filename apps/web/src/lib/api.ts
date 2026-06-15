@@ -36,6 +36,22 @@ export type Project = {
   createdAt: string;
 };
 
+export type ProjectMembership = {
+  project: Project;
+  role: string;
+};
+
+export type MeResponse = {
+  user: UserProfile;
+  memberships: ProjectMembership[];
+};
+
+export type ProjectInput = {
+  name: string;
+  projectKey: string;
+  environment: string;
+};
+
 export type EventSeverity = "info" | "warning" | "error" | "critical";
 
 export type EventRecord = {
@@ -257,6 +273,21 @@ export async function getProjects(): Promise<Project[]> {
   } catch {
     return demoProjects;
   }
+}
+
+export async function getMe(): Promise<MeResponse | null> {
+  try {
+    return await request<MeResponse>("/v1/me");
+  } catch {
+    return null;
+  }
+}
+
+export async function createProject(payload: ProjectInput): Promise<Project> {
+  return request<Project>("/v1/projects", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function getDashboard(projectKey = "demo"): Promise<DashboardSummary> {
