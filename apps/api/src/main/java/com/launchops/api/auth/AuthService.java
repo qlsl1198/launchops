@@ -1,5 +1,8 @@
 package com.launchops.api.auth;
 
+import com.launchops.api.events.ProjectRepository;
+import com.launchops.api.memberships.ProjectMembership;
+import com.launchops.api.memberships.ProjectMembershipRepository;
 import com.launchops.api.security.JwtService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -9,11 +12,21 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class AuthService {
     private final AppUserRepository userRepository;
+    private final ProjectRepository projectRepository;
+    private final ProjectMembershipRepository membershipRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    public AuthService(AppUserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(
+            AppUserRepository userRepository,
+            ProjectRepository projectRepository,
+            ProjectMembershipRepository membershipRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService
+    ) {
         this.userRepository = userRepository;
+        this.projectRepository = projectRepository;
+        this.membershipRepository = membershipRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
     }
@@ -30,6 +43,11 @@ public class AuthService {
                 passwordEncoder.encode(request.password()),
                 "OWNER"
         ));
+        projectRepository.findByProjectKey("demo").ifPresent(project -> {
+            if (!membershipRepository.existsByUserIdAndProjectId(user.getId(), project.getId())) {
+                membershipRepository.save(new ProjectMembership(project.getId(), user.getId(), "OWNER"));
+            }
+        });
         return AuthResponse.bearer(jwtService.issue(user), user);
     }
 
@@ -44,4 +62,3 @@ public class AuthService {
         return AuthResponse.bearer(jwtService.issue(user), user);
     }
 }
-
