@@ -1,7 +1,9 @@
 package com.launchops.api.tasks;
 
 import com.launchops.api.events.ProjectRepository;
+import com.launchops.api.memberships.ProjectAccessService;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -22,16 +24,21 @@ import org.springframework.web.server.ResponseStatusException;
 public class TaskController {
     private final ProjectRepository projectRepository;
     private final OpsTaskRepository taskRepository;
+    private final ProjectAccessService projectAccessService;
 
-    public TaskController(ProjectRepository projectRepository, OpsTaskRepository taskRepository) {
+    public TaskController(
+            ProjectRepository projectRepository,
+            OpsTaskRepository taskRepository,
+            ProjectAccessService projectAccessService
+    ) {
         this.projectRepository = projectRepository;
         this.taskRepository = taskRepository;
+        this.projectAccessService = projectAccessService;
     }
 
     @GetMapping
-    List<TaskResponse> list(@RequestParam(defaultValue = "demo") String projectKey) {
-        var project = projectRepository.findByProjectKey(projectKey)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown projectKey"));
+    List<TaskResponse> list(@RequestParam(defaultValue = "demo") String projectKey, Principal principal) {
+        var project = projectAccessService.requireProjectAccess(principal, projectKey);
         return taskRepository.findByProjectIdOrderByCreatedAtDesc(project.getId()).stream()
                 .map(TaskResponse::from)
                 .toList();
@@ -39,26 +46,30 @@ public class TaskController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    TaskResponse create(@RequestParam(defaultValue = "demo") String projectKey, @Valid @RequestBody TaskRequest request) {
-        var project = projectRepository.findByProjectKey(projectKey)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown projectKey"));
+    TaskResponse create(
+            @RequestParam(defaultValue = "demo") String projectKey,
+            @Valid @RequestBody TaskRequest request,
+            Principal principal
+    ) {
+        var project = projectAccessService.requireProjectAccess(principal, projectKey);
         return TaskResponse.from(taskRepository.save(new OpsTask(project.getId(), request)));
     }
 
     @PutMapping("/{id}")
-    TaskResponse update(@PathVariable UUID id, @Valid @RequestBody TaskRequest request) {
+    TaskResponse update(@PathVariable UUID id, @Valid @RequestBody TaskRequest request, Principal principal) {
         var task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown task"));
+        projectAccessService.requireProjectAccess(principal, task.getProjectId());
         task.update(request);
         return TaskResponse.from(taskRepository.save(task));
     }
 
     @PatchMapping("/{id}/status")
-    TaskResponse changeStatus(@PathVariable UUID id, @Valid @RequestBody TaskStatusRequest request) {
+    TaskResponse changeStatus(@PathVariable UUID id, @Valid @RequestBody TaskStatusRequest request, Principal principal) {
         var task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown task"));
+        projectAccessService.requireProjectAccess(principal, task.getProjectId());
         task.changeStatus(request.status());
         return TaskResponse.from(taskRepository.save(task));
     }
 }
-

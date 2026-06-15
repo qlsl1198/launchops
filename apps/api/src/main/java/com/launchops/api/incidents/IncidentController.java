@@ -1,7 +1,9 @@
 package com.launchops.api.incidents;
 
 import com.launchops.api.events.ProjectRepository;
+import com.launchops.api.memberships.ProjectAccessService;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -22,16 +24,21 @@ import org.springframework.web.server.ResponseStatusException;
 public class IncidentController {
     private final ProjectRepository projectRepository;
     private final IncidentRepository incidentRepository;
+    private final ProjectAccessService projectAccessService;
 
-    public IncidentController(ProjectRepository projectRepository, IncidentRepository incidentRepository) {
+    public IncidentController(
+            ProjectRepository projectRepository,
+            IncidentRepository incidentRepository,
+            ProjectAccessService projectAccessService
+    ) {
         this.projectRepository = projectRepository;
         this.incidentRepository = incidentRepository;
+        this.projectAccessService = projectAccessService;
     }
 
     @GetMapping
-    List<IncidentResponse> list(@RequestParam(defaultValue = "demo") String projectKey) {
-        var project = projectRepository.findByProjectKey(projectKey)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown projectKey"));
+    List<IncidentResponse> list(@RequestParam(defaultValue = "demo") String projectKey, Principal principal) {
+        var project = projectAccessService.requireProjectAccess(principal, projectKey);
         return incidentRepository.findByProjectIdOrderByCreatedAtDesc(project.getId()).stream()
                 .map(IncidentResponse::from)
                 .toList();
@@ -41,27 +48,28 @@ public class IncidentController {
     @ResponseStatus(HttpStatus.CREATED)
     IncidentResponse create(
             @RequestParam(defaultValue = "demo") String projectKey,
-            @Valid @RequestBody IncidentRequest request
+            @Valid @RequestBody IncidentRequest request,
+            Principal principal
     ) {
-        var project = projectRepository.findByProjectKey(projectKey)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown projectKey"));
+        var project = projectAccessService.requireProjectAccess(principal, projectKey);
         return IncidentResponse.from(incidentRepository.save(new Incident(project.getId(), request)));
     }
 
     @PutMapping("/{id}")
-    IncidentResponse update(@PathVariable UUID id, @Valid @RequestBody IncidentRequest request) {
+    IncidentResponse update(@PathVariable UUID id, @Valid @RequestBody IncidentRequest request, Principal principal) {
         var incident = incidentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown incident"));
+        projectAccessService.requireProjectAccess(principal, incident.getProjectId());
         incident.update(request);
         return IncidentResponse.from(incidentRepository.save(incident));
     }
 
     @PatchMapping("/{id}/status")
-    IncidentResponse changeStatus(@PathVariable UUID id, @Valid @RequestBody IncidentStatusRequest request) {
+    IncidentResponse changeStatus(@PathVariable UUID id, @Valid @RequestBody IncidentStatusRequest request, Principal principal) {
         var incident = incidentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown incident"));
+        projectAccessService.requireProjectAccess(principal, incident.getProjectId());
         incident.changeStatus(request.status());
         return IncidentResponse.from(incidentRepository.save(incident));
     }
 }
-
