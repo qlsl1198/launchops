@@ -55,6 +55,10 @@ public class OpsTask {
         return incidentId;
     }
 
+    public UUID getProjectId() {
+        return projectId;
+    }
+
     public String getTitle() {
         return title;
     }
@@ -87,4 +91,3 @@ public class OpsTask {
         this.status = status;
     }
 }
-

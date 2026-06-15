@@ -1,5 +1,6 @@
 package com.launchops.api.dashboard;
 
+import java.security.Principal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,8 +16,7 @@ public class DashboardController {
     }
 
     @GetMapping("/{projectKey}/dashboard")
-    DashboardSummary dashboard(@PathVariable String projectKey) {
-        return dashboardService.dashboard(projectKey);
+    DashboardSummary dashboard(@PathVariable String projectKey, Principal principal) {
+        return dashboardService.dashboard(projectKey, principal);
     }
 }
-

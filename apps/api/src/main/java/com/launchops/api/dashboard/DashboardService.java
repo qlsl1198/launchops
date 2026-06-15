@@ -5,7 +5,9 @@ import com.launchops.api.events.EventSeverity;
 import com.launchops.api.events.ProductEventRepository;
 import com.launchops.api.events.ProjectRepository;
 import com.launchops.api.incidents.IncidentRepository;
+import com.launchops.api.memberships.ProjectAccessService;
 import com.launchops.api.tasks.OpsTaskRepository;
+import java.security.Principal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -21,24 +23,26 @@ public class DashboardService {
     private final IncidentRepository incidentRepository;
     private final OpsTaskRepository taskRepository;
     private final AccountHealthRepository accountHealthRepository;
+    private final ProjectAccessService projectAccessService;
 
     public DashboardService(
             ProjectRepository projectRepository,
             ProductEventRepository eventRepository,
             IncidentRepository incidentRepository,
             OpsTaskRepository taskRepository,
-            AccountHealthRepository accountHealthRepository
+            AccountHealthRepository accountHealthRepository,
+            ProjectAccessService projectAccessService
     ) {
         this.projectRepository = projectRepository;
         this.eventRepository = eventRepository;
         this.incidentRepository = incidentRepository;
         this.taskRepository = taskRepository;
         this.accountHealthRepository = accountHealthRepository;
+        this.projectAccessService = projectAccessService;
     }
 
-    public DashboardSummary dashboard(String projectKey) {
-        var project = projectRepository.findByProjectKey(projectKey)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown projectKey"));
+    public DashboardSummary dashboard(String projectKey, Principal principal) {
+        var project = projectAccessService.requireProjectAccess(principal, projectKey);
 
         var since = Instant.now().minus(24, ChronoUnit.HOURS);
         var total = eventRepository.countByProjectIdAndOccurredAtAfter(project.getId(), since);
