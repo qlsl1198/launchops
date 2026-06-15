@@ -8,6 +8,17 @@ create table if not exists projects (
     created_at timestamptz not null default now()
 );
 
+create table if not exists app_users (
+    id uuid primary key default gen_random_uuid(),
+    name text not null,
+    email text not null unique,
+    password_hash text not null,
+    role text not null default 'OWNER',
+    created_at timestamptz not null default now()
+);
+
+create index if not exists ix_app_users_email on app_users(email);
+
 create table if not exists product_events (
     id uuid primary key default gen_random_uuid(),
     project_id uuid not null references projects(id) on delete cascade,
@@ -64,6 +75,7 @@ create table if not exists account_health (
 );
 
 alter table projects enable row level security;
+alter table app_users enable row level security;
 alter table product_events enable row level security;
 alter table incidents enable row level security;
 alter table ops_tasks enable row level security;
