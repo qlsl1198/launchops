@@ -25,14 +25,20 @@ import {
   EventRecord,
   EventSeverity,
   getAccountHealth,
+  getAccessToken,
   getDashboard,
   getEvents,
   getIncidents,
   getProjects,
+  getStoredUser,
   getTasks,
   Incident,
+  login,
+  logout,
   OpsTask,
-  Project
+  Project,
+  register,
+  UserProfile
 } from "./lib/api";
 
 type View = "overview" | "events" | "incidents" | "tasks" | "accounts" | "reliability";
@@ -68,6 +74,8 @@ export function App() {
   const [accountHealth, setAccountHealth] = useState<AccountHealth[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notice, setNotice] = useState("Demo mode works even before the API is deployed.");
+  const [user, setUser] = useState<UserProfile | null>(() => getStoredUser());
+  const apiConfigured = Boolean(import.meta.env.VITE_API_URL);
 
   async function refresh() {
     setIsLoading(true);
@@ -89,6 +97,10 @@ export function App() {
   }
 
   useEffect(() => {
+    if (apiConfigured && !getAccessToken()) {
+      setIsLoading(false);
+      return;
+    }
     void refresh();
   }, [projectKey]);
 
@@ -96,6 +108,18 @@ export function App() {
     () => projects.find((project) => project.projectKey === projectKey) ?? projects[0],
     [projectKey, projects]
   );
+
+  if (apiConfigured && !user) {
+    return (
+      <AuthScreen
+        onAuthenticated={(nextUser) => {
+          setUser(nextUser);
+          setNotice("Signed in. Workspace data is synced from the API.");
+          void refresh();
+        }}
+      />
+    );
+  }
 
   if (!dashboard) {
     return <div className="loading">Loading LaunchOps...</div>;
@@ -133,7 +157,10 @@ export function App() {
           <div>
             <p>Product operations</p>
             <h1>{titleFor(view)}</h1>
-            <span className="notice">{notice}</span>
+            <span className="notice">
+              {notice}
+              {user ? ` Signed in as ${user.name}.` : ""}
+            </span>
           </div>
           <div className="topActions">
             <select value={projectKey} onChange={(event) => setProjectKey(event.target.value)}>
@@ -146,6 +173,17 @@ export function App() {
             <button type="button" onClick={() => void refresh()}>
               <RefreshCw size={16} /> Refresh
             </button>
+            {user ? (
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  setUser(null);
+                }}
+              >
+                Sign out
+              </button>
+            ) : null}
           </div>
         </header>
 
@@ -184,6 +222,55 @@ export function App() {
         ) : null}
         {view === "accounts" ? <AccountsView accounts={accountHealth} /> : null}
         {view === "reliability" ? <ReliabilityView dashboard={dashboard} incidents={incidents} /> : null}
+      </section>
+    </main>
+  );
+}
+
+function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: UserProfile) => void }) {
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [name, setName] = useState("Demo Owner");
+  const [email, setEmail] = useState("owner@launchops.dev");
+  const [password, setPassword] = useState("password123");
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setError("");
+    try {
+      const response =
+        mode === "login"
+          ? await login({ email, password })
+          : await register({ name, email, password });
+      onAuthenticated(response.user);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Authentication failed");
+    }
+  }
+
+  return (
+    <main className="authShell">
+      <section className="authPanel">
+        <div className="brand authBrand">
+          <div className="brandMark">L</div>
+          <div>
+            <strong>LaunchOps</strong>
+            <span>Operations OS</span>
+          </div>
+        </div>
+        <h1>{mode === "login" ? "Sign in to your operations workspace." : "Create your LaunchOps workspace owner."}</h1>
+        <form className="formPanel authForm" onSubmit={(event) => void submit(event)}>
+          {mode === "register" ? (
+            <Field label="Name" value={name} onChange={setName} />
+          ) : null}
+          <Field label="Email" value={email} onChange={setEmail} />
+          <Field label="Password" type="password" value={password} onChange={setPassword} />
+          {error ? <p className="formError">{error}</p> : null}
+          <button type="submit">{mode === "login" ? "Sign in" : "Create account"}</button>
+        </form>
+        <button className="linkButton" type="button" onClick={() => setMode(mode === "login" ? "register" : "login")}>
+          {mode === "login" ? "Need an account? Register" : "Already have an account? Sign in"}
+        </button>
       </section>
     </main>
   );

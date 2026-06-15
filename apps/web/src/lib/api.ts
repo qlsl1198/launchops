@@ -7,6 +7,19 @@ export type DashboardMetric = {
   tone: Tone;
 };
 
+export type UserProfile = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+};
+
+export type AuthResponse = {
+  accessToken: string;
+  tokenType: "Bearer";
+  user: UserProfile;
+};
+
 export type DashboardSummary = {
   metrics: DashboardMetric[];
   recentEvents: EventRecord[];
@@ -108,6 +121,8 @@ export type AccountRiskRow = {
 };
 
 const API_URL = import.meta.env.VITE_API_URL || "";
+const TOKEN_KEY = "launchops.accessToken";
+const USER_KEY = "launchops.user";
 
 const demoDashboard: DashboardSummary = {
   metrics: [
@@ -175,9 +190,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error("API URL is not configured");
   }
 
+  const token = getAccessToken();
   const response = await fetch(`${API_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers
     },
     ...options
@@ -189,6 +206,49 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   return (await response.json()) as T;
+}
+
+export function getAccessToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function getStoredUser(): UserProfile | null {
+  const raw = localStorage.getItem(USER_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as UserProfile;
+  } catch {
+    return null;
+  }
+}
+
+export function logout() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
+function persistAuth(response: AuthResponse) {
+  localStorage.setItem(TOKEN_KEY, response.accessToken);
+  localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+  return response;
+}
+
+export async function register(payload: { name: string; email: string; password: string }) {
+  return persistAuth(
+    await request<AuthResponse>("/v1/auth/register", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function login(payload: { email: string; password: string }) {
+  return persistAuth(
+    await request<AuthResponse>("/v1/auth/login", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    })
+  );
 }
 
 export async function getProjects(): Promise<Project[]> {
@@ -273,4 +333,3 @@ export async function getAccountHealth(projectKey = "demo"): Promise<AccountHeal
     return demoAccountHealth;
   }
 }
-
