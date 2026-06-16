@@ -208,12 +208,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   const token = getAccessToken();
   const response = await fetch(`${API_URL}${path}`, {
+    ...options,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers
-    },
-    ...options
+    }
   });
 
   if (!response.ok) {
@@ -311,6 +311,71 @@ export async function createEvent(payload: EventInput): Promise<{ id: string; ac
     method: "POST",
     body: JSON.stringify(payload)
   });
+}
+
+export async function streamEvents(
+  projectKey: string,
+  onEvent: (event: EventRecord) => void,
+  signal: AbortSignal,
+  onConnected?: () => void
+) {
+  if (!API_URL) {
+    throw new Error("API URL is not configured");
+  }
+
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  const response = await fetch(`${API_URL}/v1/events/stream?projectKey=${encodeURIComponent(projectKey)}`, {
+    headers: {
+      Accept: "text/event-stream",
+      Authorization: `Bearer ${token}`
+    },
+    signal
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`실시간 이벤트 연결 실패: ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (!signal.aborted) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      let boundary = buffer.indexOf("\n\n");
+
+      while (boundary >= 0) {
+        const rawMessage = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        boundary = buffer.indexOf("\n\n");
+
+        const lines = rawMessage.replaceAll("\r\n", "\n").split("\n");
+        const eventName = lines.find((line) => line.startsWith("event:"))?.slice(6).trim();
+        const data = lines
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trim())
+          .join("\n");
+
+        if (eventName === "connected") {
+          onConnected?.();
+        }
+
+        if (eventName === "product-event" && data) {
+          onEvent(JSON.parse(data) as EventRecord);
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 export async function getIncidents(projectKey = "demo"): Promise<Incident[]> {

@@ -45,6 +45,7 @@ import {
   Project,
   ProjectMembership,
   register,
+  streamEvents,
   UserProfile
 } from "./lib/api";
 
@@ -489,9 +490,48 @@ function EventsView({
 }) {
   const [form, setForm] = useState<EventInput>({ ...defaultEvent, projectKey });
   const [propertiesText, setPropertiesText] = useState('{"plan":"pro"}');
+  const [liveEvents, setLiveEvents] = useState<EventRecord[]>(events);
+  const [streamStatus, setStreamStatus] = useState<"demo" | "connecting" | "connected" | "disconnected">("demo");
+  const [receivedCount, setReceivedCount] = useState(0);
 
   useEffect(() => {
     setForm((current) => ({ ...current, projectKey }));
+  }, [projectKey]);
+
+  useEffect(() => {
+    setLiveEvents(events);
+  }, [events]);
+
+  useEffect(() => {
+    if (!import.meta.env.VITE_API_URL || !getAccessToken()) {
+      setStreamStatus("demo");
+      return;
+    }
+
+    const controller = new AbortController();
+    setStreamStatus("connecting");
+    void streamEvents(
+      projectKey,
+      (event) => {
+        setLiveEvents((current) => [event, ...current.filter((item) => item.id !== event.id)].slice(0, 100));
+        setReceivedCount((count) => count + 1);
+        setStreamStatus("connected");
+      },
+      controller.signal,
+      () => setStreamStatus("connected")
+    )
+      .then(() => {
+        if (!controller.signal.aborted) {
+          setStreamStatus("disconnected");
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setStreamStatus("disconnected");
+        }
+      });
+
+    return () => controller.abort();
   }, [projectKey]);
 
   async function submit(event: FormEvent) {
@@ -538,9 +578,34 @@ function EventsView({
         </button>
       </form>
 
-      <DataTable title="이벤트 스트림" rows={normalizeRows(events)} />
+      <div className="streamColumn">
+        <section className="streamStatusPanel">
+          <div>
+            <span>실시간 연결</span>
+            <strong>{streamStatusLabel(streamStatus)}</strong>
+          </div>
+          <div>
+            <span>수신 이벤트</span>
+            <strong>{receivedCount}건</strong>
+          </div>
+        </section>
+        <DataTable title="이벤트 스트림" rows={normalizeRows(liveEvents)} />
+      </div>
     </section>
   );
+}
+
+function streamStatusLabel(status: "demo" | "connecting" | "connected" | "disconnected") {
+  switch (status) {
+    case "connected":
+      return "연결됨";
+    case "connecting":
+      return "연결 중";
+    case "disconnected":
+      return "연결 끊김";
+    default:
+      return "데모 모드";
+  }
 }
 
 function IncidentsView({
