@@ -1,10 +1,12 @@
 package com.launchops.api.incidents;
 
+import com.launchops.api.audit.AuditLogService;
 import com.launchops.api.events.ProjectRepository;
 import com.launchops.api.memberships.ProjectAccessService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,15 +27,18 @@ public class IncidentController {
     private final ProjectRepository projectRepository;
     private final IncidentRepository incidentRepository;
     private final ProjectAccessService projectAccessService;
+    private final AuditLogService auditLogService;
 
     public IncidentController(
             ProjectRepository projectRepository,
             IncidentRepository incidentRepository,
-            ProjectAccessService projectAccessService
+            ProjectAccessService projectAccessService,
+            AuditLogService auditLogService
     ) {
         this.projectRepository = projectRepository;
         this.incidentRepository = incidentRepository;
         this.projectAccessService = projectAccessService;
+        this.auditLogService = auditLogService;
     }
 
     @GetMapping
@@ -52,7 +57,17 @@ public class IncidentController {
             Principal principal
     ) {
         var project = projectAccessService.requireProjectAccess(principal, projectKey);
-        return IncidentResponse.from(incidentRepository.save(new Incident(project.getId(), request)));
+        var incident = incidentRepository.save(new Incident(project.getId(), request));
+        auditLogService.record(
+                project.getId(),
+                principal,
+                "incident.created",
+                "incident",
+                incident.getId().toString(),
+                "장애가 생성되었습니다.",
+                Map.of("title", incident.getTitle(), "severity", incident.getSeverity(), "status", incident.getStatus())
+        );
+        return IncidentResponse.from(incident);
     }
 
     @PutMapping("/{id}")
@@ -61,7 +76,17 @@ public class IncidentController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown incident"));
         projectAccessService.requireProjectAccess(principal, incident.getProjectId());
         incident.update(request);
-        return IncidentResponse.from(incidentRepository.save(incident));
+        var saved = incidentRepository.save(incident);
+        auditLogService.record(
+                saved.getProjectId(),
+                principal,
+                "incident.updated",
+                "incident",
+                saved.getId().toString(),
+                "장애 정보가 수정되었습니다.",
+                Map.of("title", saved.getTitle(), "severity", saved.getSeverity(), "status", saved.getStatus())
+        );
+        return IncidentResponse.from(saved);
     }
 
     @PatchMapping("/{id}/status")
@@ -70,6 +95,16 @@ public class IncidentController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown incident"));
         projectAccessService.requireProjectAccess(principal, incident.getProjectId());
         incident.changeStatus(request.status());
-        return IncidentResponse.from(incidentRepository.save(incident));
+        var saved = incidentRepository.save(incident);
+        auditLogService.record(
+                saved.getProjectId(),
+                principal,
+                "incident.status_changed",
+                "incident",
+                saved.getId().toString(),
+                "장애 상태가 변경되었습니다.",
+                Map.of("title", saved.getTitle(), "status", saved.getStatus())
+        );
+        return IncidentResponse.from(saved);
     }
 }

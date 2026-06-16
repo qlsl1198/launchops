@@ -19,6 +19,7 @@ import { DataTable } from "./components/DataTable";
 import { MetricCard } from "./components/MetricCard";
 import {
   AccountHealth,
+  AuditLog,
   changeIncidentStatus,
   changeTaskStatus,
   createEvent,
@@ -30,6 +31,7 @@ import {
   EventRecord,
   EventSeverity,
   getAccountHealth,
+  getAuditLogs,
   getAccessToken,
   getDashboard,
   getEvents,
@@ -83,6 +85,7 @@ export function App() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [tasks, setTasks] = useState<OpsTask[]>([]);
   const [accountHealth, setAccountHealth] = useState<AccountHealth[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notice, setNotice] = useState("API 배포 전에도 데모 모드로 화면을 확인할 수 있습니다.");
   const [user, setUser] = useState<UserProfile | null>(() => getStoredUser());
@@ -90,14 +93,15 @@ export function App() {
 
   async function refresh() {
     setIsLoading(true);
-    const [me, fallbackProjects, nextDashboard, nextEvents, nextIncidents, nextTasks, nextAccounts] = await Promise.all([
+    const [me, fallbackProjects, nextDashboard, nextEvents, nextIncidents, nextTasks, nextAccounts, nextAuditLogs] = await Promise.all([
       getMe(),
       getProjects(),
       getDashboard(projectKey),
       getEvents(projectKey),
       getIncidents(projectKey),
       getTasks(projectKey),
-      getAccountHealth(projectKey)
+      getAccountHealth(projectKey),
+      getAuditLogs(projectKey)
     ]);
     const memberProjects = me?.memberships.map((membership) => membership.project) ?? [];
     setUser(me?.user ?? user);
@@ -108,6 +112,7 @@ export function App() {
     setIncidents(nextIncidents);
     setTasks(nextTasks);
     setAccountHealth(nextAccounts);
+    setAuditLogs(nextAuditLogs);
     setIsLoading(false);
   }
 
@@ -254,6 +259,7 @@ export function App() {
         {view === "accounts" ? <AccountsView accounts={accountHealth} /> : null}
         {view === "workspace" ? (
           <WorkspaceView
+            auditLogs={auditLogs}
             memberships={memberships}
             projects={projects}
             onChanged={() => {
@@ -751,10 +757,12 @@ function AccountsView({ accounts }: { accounts: AccountHealth[] }) {
 }
 
 function WorkspaceView({
+  auditLogs,
   memberships,
   projects,
   onChanged
 }: {
+  auditLogs: AuditLog[];
   memberships: ProjectMembership[];
   projects: Project[];
   onChanged: () => void;
@@ -792,22 +800,42 @@ function WorkspaceView({
         </button>
       </form>
 
-      <section className="panel">
-        <div className="panelHeader">
-          <h2>멤버십</h2>
-        </div>
-        <div className="cardList">
-          {visibleMemberships.map((membership) => (
-            <article className="workItem" key={membership.project.id}>
-              <div>
-                <strong>{membership.project.name}</strong>
-                <span>{membership.project.projectKey} · {koValue(membership.project.environment)}</span>
-              </div>
-              <p>역할: {koValue(membership.role)}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      <div className="streamColumn">
+        <section className="panel">
+          <div className="panelHeader">
+            <h2>멤버십</h2>
+          </div>
+          <div className="cardList">
+            {visibleMemberships.map((membership) => (
+              <article className="workItem" key={membership.project.id}>
+                <div>
+                  <strong>{membership.project.name}</strong>
+                  <span>{membership.project.projectKey} · {koValue(membership.project.environment)}</span>
+                </div>
+                <p>역할: {koValue(membership.role)}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panelHeader">
+            <h2>활동 피드</h2>
+          </div>
+          <div className="cardList">
+            {auditLogs.map((log) => (
+              <article className="workItem auditItem" key={log.id}>
+                <div>
+                  <strong>{log.message}</strong>
+                  <span>{koValue(log.action)} · {log.actorEmail}</span>
+                </div>
+                <p>{formatAuditDetails(log.details)}</p>
+                <small>{formatDateTime(log.createdAt)}</small>
+              </article>
+            ))}
+          </div>
+        </section>
+      </div>
     </section>
   );
 }
@@ -881,6 +909,34 @@ function normalizeRows(rows: Array<Record<string, unknown>>) {
   });
 }
 
+function formatAuditDetails(details?: Record<string, unknown>) {
+  if (!details || !Object.keys(details).length) {
+    return "상세 정보 없음";
+  }
+
+  return Object.entries(details)
+    .map(([key, value]) => `${koValue(key)}: ${koValue(String(value))}`)
+    .join(" · ");
+}
+
+function formatDateTime(value?: string) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
 function koValue(value: string) {
   const dictionary: Record<string, string> = {
     info: "정보",
@@ -899,6 +955,19 @@ function koValue(value: string) {
     low: "낮음",
     server: "서버",
     stripe: "스트라이프",
+    title: "제목",
+    status: "상태",
+    priority: "우선순위",
+    name: "이름",
+    severity: "심각도",
+    accountId: "고객 ID",
+    "event.ingested": "이벤트 수집",
+    "incident.created": "장애 생성",
+    "incident.updated": "장애 수정",
+    "incident.status_changed": "장애 상태 변경",
+    "task.created": "작업 생성",
+    "task.updated": "작업 수정",
+    "task.status_changed": "작업 상태 변경",
     api: "API",
     web: "웹",
     production: "운영",
