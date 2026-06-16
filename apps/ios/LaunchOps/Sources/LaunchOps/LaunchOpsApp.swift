@@ -9,9 +9,8 @@ struct LaunchOpsApp: App {
             DashboardView()
                 .environmentObject(store)
                 .task {
-                    await store.refresh()
+                    await store.restoreSession()
                 }
         }
     }
 }
-
