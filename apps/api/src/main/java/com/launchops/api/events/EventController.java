@@ -3,6 +3,8 @@ package com.launchops.api.events;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
+import com.launchops.api.audit.AuditLogService;
 import com.launchops.api.memberships.ProjectAccessService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -22,15 +24,18 @@ public class EventController {
     private final ProductEventRepository eventRepository;
     private final ProjectAccessService projectAccessService;
     private final EventStreamService eventStreamService;
+    private final AuditLogService auditLogService;
 
     public EventController(
             ProductEventRepository eventRepository,
             ProjectAccessService projectAccessService,
-            EventStreamService eventStreamService
+            EventStreamService eventStreamService,
+            AuditLogService auditLogService
     ) {
         this.eventRepository = eventRepository;
         this.projectAccessService = projectAccessService;
         this.eventStreamService = eventStreamService;
+        this.auditLogService = auditLogService;
     }
 
     @GetMapping
@@ -63,6 +68,15 @@ public class EventController {
     EventResponse ingest(@Valid @RequestBody EventRequest request, Principal principal) {
         var project = projectAccessService.requireProjectAccess(principal, request.projectKey());
         var event = eventRepository.save(new ProductEvent(project, request));
+        auditLogService.record(
+                project.getId(),
+                principal,
+                "event.ingested",
+                "product_event",
+                event.getId().toString(),
+                "제품 이벤트가 수집되었습니다.",
+                Map.of("name", event.getName(), "severity", event.getSeverity().name(), "accountId", event.getAccountId())
+        );
         eventStreamService.publish(project.getId(), ProductEventResponse.from(event));
         return new EventResponse(event.getId(), true);
     }
