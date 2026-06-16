@@ -6,6 +6,7 @@ import java.util.List;
 import com.launchops.api.memberships.ProjectAccessService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,23 +14,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/v1/events")
 public class EventController {
-    private final ProjectRepository projectRepository;
     private final ProductEventRepository eventRepository;
     private final ProjectAccessService projectAccessService;
+    private final EventStreamService eventStreamService;
 
     public EventController(
-            ProjectRepository projectRepository,
             ProductEventRepository eventRepository,
-            ProjectAccessService projectAccessService
+            ProjectAccessService projectAccessService,
+            EventStreamService eventStreamService
     ) {
-        this.projectRepository = projectRepository;
         this.eventRepository = eventRepository;
         this.projectAccessService = projectAccessService;
+        this.eventStreamService = eventStreamService;
     }
 
     @GetMapping
@@ -48,11 +49,21 @@ public class EventController {
         return events.stream().map(ProductEventResponse::from).toList();
     }
 
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    SseEmitter stream(
+            @RequestParam(defaultValue = "demo") String projectKey,
+            Principal principal
+    ) {
+        var project = projectAccessService.requireProjectAccess(principal, projectKey);
+        return eventStreamService.subscribe(project.getId());
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
     EventResponse ingest(@Valid @RequestBody EventRequest request, Principal principal) {
         var project = projectAccessService.requireProjectAccess(principal, request.projectKey());
         var event = eventRepository.save(new ProductEvent(project, request));
+        eventStreamService.publish(project.getId(), ProductEventResponse.from(event));
         return new EventResponse(event.getId(), true);
     }
 }
