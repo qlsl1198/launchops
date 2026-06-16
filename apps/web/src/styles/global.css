@@ -497,6 +497,41 @@ label textarea {
   align-items: start;
 }
 
+.streamColumn {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.streamStatusPanel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.streamStatusPanel div {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px;
+}
+
+.streamStatusPanel span,
+.streamStatusPanel strong {
+  display: block;
+}
+
+.streamStatusPanel span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.streamStatusPanel strong {
+  margin-top: 6px;
+  font-size: 18px;
+}
+
 .panelHeader {
   display: flex;
   align-items: center;
