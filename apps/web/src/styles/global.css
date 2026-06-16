@@ -656,7 +656,8 @@ label textarea {
 .workItem span,
 .taskCard span,
 .accountCard span,
-.accountCard small {
+.accountCard small,
+.auditItem small {
   color: var(--muted);
   font-size: 13px;
 }

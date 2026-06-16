@@ -136,6 +136,17 @@ export type AccountRiskRow = {
   summary: string;
 };
 
+export type AuditLog = {
+  id: string;
+  actorEmail: string;
+  action: string;
+  targetType: string;
+  targetId?: string;
+  message: string;
+  details?: Record<string, unknown>;
+  createdAt: string;
+};
+
 const API_URL = import.meta.env.VITE_API_URL || "";
 const TOKEN_KEY = "launchops.accessToken";
 const USER_KEY = "launchops.user";
@@ -198,6 +209,39 @@ const demoAccountHealth: AccountHealth[] = [
     riskScore: 61,
     summary: "최근 배포 이후 검색 지연 시간이 증가했습니다.",
     updatedAt: new Date().toISOString()
+  }
+];
+
+const demoAuditLogs: AuditLog[] = [
+  {
+    id: "audit_1",
+    actorEmail: "demo@launchops.kr",
+    action: "incident.status_changed",
+    targetType: "incident",
+    targetId: "inc_1",
+    message: "장애 상태가 변경되었습니다.",
+    details: { title: "결제 웹훅 재시도 급증", status: "monitoring" },
+    createdAt: new Date(Date.now() - 1000 * 60 * 3).toISOString()
+  },
+  {
+    id: "audit_2",
+    actorEmail: "demo@launchops.kr",
+    action: "task.created",
+    targetType: "task",
+    targetId: "task_4",
+    message: "운영 작업이 생성되었습니다.",
+    details: { title: "VIP 고객 영향도 확인", priority: "high" },
+    createdAt: new Date(Date.now() - 1000 * 60 * 9).toISOString()
+  },
+  {
+    id: "audit_3",
+    actorEmail: "demo@launchops.kr",
+    action: "event.ingested",
+    targetType: "product_event",
+    targetId: "evt_1",
+    message: "제품 이벤트가 수집되었습니다.",
+    details: { name: "결제 웹훅 실패", severity: "error", accountId: "orbit" },
+    createdAt: new Date(Date.now() - 1000 * 60 * 14).toISOString()
   }
 ];
 
@@ -427,5 +471,13 @@ export async function getAccountHealth(projectKey = "demo"): Promise<AccountHeal
     return await request<AccountHealth[]>(`/v1/accounts/health?projectKey=${projectKey}`);
   } catch {
     return demoAccountHealth;
+  }
+}
+
+export async function getAuditLogs(projectKey = "demo"): Promise<AuditLog[]> {
+  try {
+    return await request<AuditLog[]>(`/v1/audit-logs?projectKey=${projectKey}&limit=50`);
+  } catch {
+    return demoAuditLogs;
   }
 }
